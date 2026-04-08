@@ -1,39 +1,16 @@
-import {
-  addDoc,
-  auth,
-  collection,
-  db,
-  deleteDoc,
-  doc,
-  onAuthStateChanged,
-  onSnapshot,
-  orderBy,
-  provider,
-  query,
-  serverTimestamp,
-  setDoc,
-  signInWithPopup,
-  signOut,
-  updateDoc,
-} from "./firebase-config.js";
-
 const STORAGE_KEY = "freshfaces-v3";
 const MODELS_URL = "https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js/weights";
 
 const state = {
-  currentUser: null,
   users: [],
-  lunchPosts: [],
   suggestionId: null,
   memorizedIds: [],
-  lunchParticipantCounts: {},
   registerStream: null,
   recognitionStream: null,
   faceApiReady: false,
 };
 
 const els = {
-  app: document.querySelector("#app"),
   authStatus: document.querySelector("#authStatus"),
   cameraCaptureButton: document.querySelector("#cameraCaptureButton"),
   cameraPreview: document.querySelector("#cameraPreview"),
@@ -44,14 +21,6 @@ const els = {
   directorySearch: document.querySelector("#directorySearch"),
   exportButton: document.querySelector("#exportButton"),
   importInput: document.querySelector("#importInput"),
-  loginPanel: document.querySelector("#loginPanel"),
-  loginPanelButton: document.querySelector("#loginPanelButton"),
-  loginButton: document.querySelector("#loginButton"),
-  logoutButton: document.querySelector("#logoutButton"),
-  lunchDate: document.querySelector("#lunchDate"),
-  lunchFeed: document.querySelector("#lunchFeed"),
-  lunchForm: document.querySelector("#lunchForm"),
-  lunchSlot: document.querySelector("#lunchSlot"),
   photoUpload: document.querySelector("#photoUpload"),
   profileForm: document.querySelector("#profileForm"),
   profileGallery: document.querySelector("#profileGallery"),
@@ -68,27 +37,17 @@ const els = {
   welcomeName: document.querySelector("#welcomeName"),
 };
 
-const lunchCollection = collection(db, "lunchPosts");
-const usersCollection = collection(db, "profiles");
-
 boot();
 
 async function boot() {
   bindEvents();
   loadLocalState();
   await loadFaceApi();
-  els.lunchDate.valueAsDate = new Date();
-  subscribeProfiles();
-  subscribeLunchPosts();
-  onAuthStateChanged(auth, handleAuthChange);
+  hydrateProfileForm();
+  renderAll();
 }
 
 function bindEvents() {
-  els.loginButton.addEventListener("click", handleLogin);
-  els.loginPanelButton.addEventListener("click", handleLogin);
-  els.logoutButton.addEventListener("click", async () => {
-    await signOut(auth);
-  });
   els.cameraStartButton.addEventListener("click", () => startCamera("register"));
   els.recognitionStartButton.addEventListener("click", () => startCamera("recognition"));
   els.cameraCaptureButton.addEventListener("click", captureFromCamera);
@@ -103,45 +62,6 @@ function bindEvents() {
   els.exportButton.addEventListener("click", exportJson);
   els.importInput.addEventListener("change", importJson);
   els.deleteProfileButton.addEventListener("click", deleteMyProfile);
-  els.lunchForm.addEventListener("submit", createLunchPost);
-}
-
-async function handleLogin() {
-  try {
-    await signInWithPopup(auth, provider);
-  } catch (error) {
-    setStatus(`ログインに失敗しました: ${error.message}`);
-  }
-}
-
-function handleAuthChange(user) {
-  state.currentUser = user;
-  const allowed = Boolean(user?.email?.endsWith("@kamiyama.ac.jp"));
-  const canUseApp = Boolean(user) && allowed;
-
-  els.app.hidden = !canUseApp;
-  els.loginPanel.hidden = canUseApp;
-  els.logoutButton.hidden = !user;
-  els.loginButton.hidden = Boolean(user);
-
-  if (!user) {
-    els.welcomeName.textContent = "ようこそ";
-    setStatus("学内アカウントでログインしてください。");
-    return;
-  }
-
-  if (user && !allowed) {
-    setStatus("`@kamiyama.ac.jp` の Google アカウントのみ利用できます。");
-    void signOut(auth);
-    return;
-  }
-
-  els.welcomeName.textContent = `${user.displayName ?? "学内ユーザー"} さん`;
-  setStatus("ログインできました。プロフィールを登録すると使い始められます。");
-
-  hydrateProfileForm();
-  renderAll();
-  requestNotificationPermission();
 }
 
 function setStatus(message) {
@@ -173,23 +93,13 @@ function persistLocalState() {
 }
 
 function getActiveProfileId() {
-  if (state.currentUser) return state.currentUser.uid;
-  return null;
+  return "local-user";
 }
 
 function getMyProfile() {
   const id = getActiveProfileId();
   if (!id) return null;
   return state.users.find((user) => user.id === id) ?? null;
-}
-
-function subscribeProfiles() {
-  onSnapshot(usersCollection, (snapshot) => {
-    state.users = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
-    persistLocalState();
-    hydrateProfileForm();
-    renderAll();
-  });
 }
 
 function hydrateProfileForm() {
@@ -208,7 +118,7 @@ async function saveProfile(event) {
   const existing = getMyProfile();
   const nextProfile = {
     id: activeProfileId,
-    email: state.currentUser?.email ?? "guest@local",
+    email: "local@freshfaces",
     name: els.profileName.value.trim(),
     kana: els.profileKana.value.trim(),
     nickname: els.profileNickname.value.trim(),
@@ -227,7 +137,6 @@ async function saveProfile(event) {
   }
 
   upsertLocalProfile(nextProfile);
-  if (state.currentUser) await setDoc(doc(db, "profiles", nextProfile.id), nextProfile, { merge: true });
   persistLocalState();
   renderAll();
   setStatus("プロフィールを保存しました。");
@@ -253,10 +162,6 @@ async function captureFromCamera() {
 
 async function addFaceToMyProfile(imageData) {
   const activeProfileId = getActiveProfileId();
-  if (!activeProfileId) {
-    setStatus("先にログインしてください。");
-    return;
-  }
   if (!state.faceApiReady) {
     setStatus("顔認識モデルの準備中です。");
     return;
@@ -270,7 +175,7 @@ async function addFaceToMyProfile(imageData) {
 
   const existing = getMyProfile() ?? {
     id: activeProfileId,
-    email: state.currentUser?.email ?? "guest@local",
+    email: "local@freshfaces",
     name: els.profileName.value.trim(),
     kana: els.profileKana.value.trim(),
     nickname: els.profileNickname.value.trim(),
@@ -290,7 +195,6 @@ async function addFaceToMyProfile(imageData) {
   existing.updatedAt = new Date().toISOString();
 
   upsertLocalProfile(existing);
-  if (state.currentUser) await setDoc(doc(db, "profiles", existing.id), existing, { merge: true });
   persistLocalState();
   renderProfileGallery();
   renderDirectory();
@@ -530,11 +434,6 @@ async function importJson(event) {
     state.users = parsed.users;
     state.memorizedIds = Array.isArray(parsed.memorizedIds) ? parsed.memorizedIds : [];
     persistLocalState();
-    for (const user of state.users) {
-      if (state.currentUser) {
-        await setDoc(doc(db, "profiles", user.id), user, { merge: true });
-      }
-    }
     hydrateProfileForm();
     renderAll();
     setStatus("JSONを読み込みました。");
@@ -551,132 +450,9 @@ async function deleteMyProfile() {
   if (!window.confirm("自分のプロフィールを削除しますか？")) return;
   state.users = state.users.filter((user) => user.id !== profile.id);
   persistLocalState();
-  if (state.currentUser) await deleteDoc(doc(db, "profiles", profile.id)).catch(() => {});
   hydrateProfileForm();
   renderAll();
   setStatus("プロフィールを削除しました。");
-}
-
-async function createLunchPost(event) {
-  event.preventDefault();
-  if (!state.currentUser) {
-    setStatus("相席募集はログイン後に使えます。");
-    return;
-  }
-  const myProfile = getMyProfile();
-  if (!myProfile) {
-    setStatus("先にプロフィールを保存してください。");
-    return;
-  }
-  const date = els.lunchDate.value;
-  const slot = els.lunchSlot.value;
-  await addDoc(lunchCollection, {
-    ownerId: state.currentUser.uid,
-    ownerName: myProfile.name,
-    date,
-    slot,
-    title: "今、食堂で一緒に食べる人募集",
-    participants: [],
-    expiresAt: createExpiryIso(date, slot),
-    createdAt: serverTimestamp(),
-  });
-  els.lunchForm.reset();
-  els.lunchDate.valueAsDate = new Date();
-  setStatus("相席募集を作成しました。");
-}
-
-function subscribeLunchPosts() {
-  const q = query(lunchCollection, orderBy("date", "asc"));
-  onSnapshot(q, async (snapshot) => {
-    const now = new Date().toISOString();
-    const items = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
-    state.lunchPosts = items.filter((item) => item.expiresAt > now);
-    maybeNotifyLunchChanges(state.lunchPosts);
-    renderLunchFeed();
-
-    for (const item of items.filter((entry) => entry.expiresAt <= now)) {
-      await deleteDoc(doc(db, "lunchPosts", item.id)).catch(() => {});
-    }
-  });
-}
-
-function renderLunchFeed() {
-  els.lunchFeed.innerHTML = "";
-  if (state.lunchPosts.length === 0) {
-    els.lunchFeed.innerHTML = `<div class="empty-state">現在募集中の相席はありません。</div>`;
-    return;
-  }
-  for (const post of state.lunchPosts) {
-    const participants = Array.isArray(post.participants) ? post.participants : [];
-    const card = document.createElement("article");
-    card.className = "lunch-card";
-    card.innerHTML = `
-      <div class="lunch-meta">
-        <span class="chip">${escapeHtml(post.date)}</span>
-        <span class="chip">${post.slot === "lunch" ? "昼" : "夜"}</span>
-      </div>
-      <h4>${escapeHtml(post.title)}</h4>
-      <p class="muted">募集者: ${escapeHtml(post.ownerName)}</p>
-      <div class="participants">
-        ${
-          participants.length
-            ? participants.map((participant) => `<span class="participant">${escapeHtml(participant.name)}</span>`).join("")
-            : '<span class="muted">まだ参加者はいません。</span>'
-        }
-      </div>
-      <button class="primary" type="button">参加する</button>
-    `;
-    card.querySelector("button").addEventListener("click", () => joinLunch(post));
-    els.lunchFeed.append(card);
-  }
-}
-
-async function joinLunch(post) {
-  if (!state.currentUser) {
-    setStatus("相席募集への参加はログイン後に使えます。");
-    return;
-  }
-  const myProfile = getMyProfile();
-  if (!myProfile) {
-    setStatus("先にプロフィールを保存してください。");
-    return;
-  }
-  const participants = Array.isArray(post.participants) ? [...post.participants] : [];
-  if (participants.some((participant) => participant.id === state.currentUser.uid)) {
-    setStatus("すでに参加しています。");
-    return;
-  }
-  participants.push({ id: state.currentUser.uid, name: myProfile.name });
-  await updateDoc(doc(db, "lunchPosts", post.id), { participants });
-  setStatus("相席募集に参加しました。");
-}
-
-function maybeNotifyLunchChanges(posts) {
-  if (!state.currentUser || Notification.permission !== "granted") {
-    state.lunchParticipantCounts = Object.fromEntries(
-      posts.map((post) => [post.id, Array.isArray(post.participants) ? post.participants.length : 0]),
-    );
-    return;
-  }
-
-  for (const post of posts) {
-    const count = Array.isArray(post.participants) ? post.participants.length : 0;
-    const previous = state.lunchParticipantCounts[post.id] ?? count;
-    if (post.ownerId === state.currentUser.uid && count > previous) {
-      const latest = post.participants.at(-1);
-      if (latest) {
-        new Notification("FreshFaces", {
-          body: `${latest.name} さんがあなたの相席募集に参加しました。`,
-        });
-      }
-    }
-    state.lunchParticipantCounts[post.id] = count;
-  }
-}
-
-async function requestNotificationPermission() {
-  if (!("Notification" in window) || Notification.permission !== "default") return;
-  await Notification.requestPermission().catch(() => {});
 }
 
 async function detectDescriptor(imageData) {

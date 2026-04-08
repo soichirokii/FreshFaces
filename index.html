@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FreshFaces</title>
     <link rel="stylesheet" href="./styles.css" />
-    <script src="./config.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
     <script type="module" src="./app.js"></script>
   </head>
@@ -15,36 +14,21 @@
         <div>
           <p class="eyebrow">Kamiyama Freshers App</p>
           <h1>FreshFaces</h1>
-          <p class="hero-copy">新入生の顔と名前を覚えるための、シンプルな学内向けアプリ。</p>
-        </div>
-        <div class="hero-actions">
-          <button id="loginButton" class="primary">Googleでログイン</button>
-          <button id="logoutButton" class="ghost" hidden>ログアウト</button>
+          <p class="hero-copy">新入生の顔と名前を覚えるための、シンプルなローカルアプリ。</p>
         </div>
       </header>
 
-      <section id="loginPanel" class="card auth-panel">
-        <p class="section-label">Login</p>
-        <h2>まずは学内アカウントでログイン</h2>
-        <p class="muted">
-          `@kamiyama.ac.jp` の Google アカウントでログインすると、プロフィール登録、顔認識、一覧、相席募集を使えます。
-        </p>
-        <div class="inline-actions">
-          <button id="loginPanelButton" class="primary" type="button">Googleでログイン</button>
-        </div>
-      </section>
-
-      <main id="app" class="content" hidden>
+      <main id="app" class="content">
         <section class="card welcome-card">
           <div>
             <p class="section-label">Hello</p>
-            <h2 id="welcomeName">ようこそ</h2>
-            <p id="authStatus" class="muted">学内アカウントでログインするか、ログインなしで試してください。</p>
+            <h2 id="welcomeName">ローカルモード</h2>
+            <p id="authStatus" class="muted">データはこのブラウザのみに保存されます。</p>
           </div>
           <div class="badge-row">
-            <span class="badge">GitHub Pages対応</span>
             <span class="badge">localStorage</span>
-            <span class="badge">Firebase共有</span>
+            <span class="badge">カメラ対応</span>
+            <span class="badge">顔認識</span>
           </div>
         </section>
 
@@ -69,21 +53,7 @@
                 <h3>相席募集</h3>
               </div>
             </div>
-            <form id="lunchForm" class="stack">
-              <label>
-                日付
-                <input id="lunchDate" type="date" required />
-              </label>
-              <label>
-                時間帯
-                <select id="lunchSlot">
-                  <option value="lunch">昼</option>
-                  <option value="dinner">夜</option>
-                </select>
-              </label>
-              <button class="primary" type="submit">食堂で募集する</button>
-            </form>
-            <div id="lunchFeed" class="stack feed"></div>
+            <div class="empty-state">相席募集は一旦オフにしています。</div>
           </article>
         </section>
 
