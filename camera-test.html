@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Camera Test</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      button {
+        padding: 12px 16px;
+        border: 0;
+        border-radius: 12px;
+        background: #da6a2a;
+        color: white;
+        font: inherit;
+      }
+      video {
+        width: 100%;
+        margin-top: 16px;
+        border-radius: 16px;
+        background: #ddd;
+      }
+      pre {
+        white-space: pre-wrap;
+        background: #f5f5f5;
+        border-radius: 12px;
+        padding: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Camera Test</h1>
+    <p>このページでカメラが映れば、ブラウザ権限は問題ありません。</p>
+    <button id="start">カメラ開始</button>
+    <pre id="status">待機中</pre>
+    <video id="video" autoplay muted playsinline></video>
+
+    <script>
+      const statusEl = document.getElementById("status");
+      const videoEl = document.getElementById("video");
+      const startButton = document.getElementById("start");
+
+      startButton.addEventListener("click", async () => {
+        statusEl.textContent = "起動を試しています...";
+        try {
+          if (!navigator.mediaDevices?.getUserMedia) {
+            throw new Error("getUserMedia が使えません");
+          }
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "user" },
+            audio: false,
+          });
+          videoEl.srcObject = stream;
+          await videoEl.play();
+          statusEl.textContent = "成功: カメラ映像を表示しています";
+        } catch (error) {
+          statusEl.textContent = `失敗: ${error.name || "Error"}\n${error.message || ""}`;
+        }
+      });
+    </script>
+  </body>
+</html>

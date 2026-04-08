@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isKamiyamaUser() {
+      return request.auth != null
+        && request.auth.token.email != null
+        && request.auth.token.email.matches('.*@kamiyama\\.ac\\.jp$');
+    }
+
+    match /profiles/{userId} {
+      allow read: if isKamiyamaUser();
+      allow create, update, delete: if isKamiyamaUser() && request.auth.uid == userId;
+    }
+
+    match /lunchPosts/{postId} {
+      allow read: if isKamiyamaUser();
+      allow create: if isKamiyamaUser();
+      allow update, delete: if isKamiyamaUser();
+    }
+  }
+}
