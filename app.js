@@ -1,5 +1,8 @@
+import { collection, db, deleteDoc, doc, onSnapshot, setDoc } from "./firebase-config.js";
+
 const STORAGE_KEY = "freshfaces-v3";
 const MODELS_URL = "https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js/weights";
+const DEVICE_ID_KEY = "freshfaces-device-id";
 
 const state = {
   users: [],
@@ -37,6 +40,8 @@ const els = {
   welcomeName: document.querySelector("#welcomeName"),
 };
 
+const profilesCollection = collection(db, "profiles");
+
 boot();
 
 async function boot() {
@@ -45,6 +50,7 @@ async function boot() {
   await loadFaceApi();
   hydrateProfileForm();
   renderAll();
+  subscribeProfiles();
 }
 
 function bindEvents() {
@@ -95,7 +101,12 @@ function persistLocalState() {
 }
 
 function getActiveProfileId() {
-  return "local-user";
+  let id = localStorage.getItem(DEVICE_ID_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(DEVICE_ID_KEY, id);
+  }
+  return id;
 }
 
 function getMyProfile() {
@@ -110,6 +121,28 @@ function hydrateProfileForm() {
   els.profileKana.value = profile?.kana ?? "";
   els.profileNickname.value = profile?.nickname ?? "";
   renderProfileGallery();
+}
+
+function subscribeProfiles() {
+  onSnapshot(
+    profilesCollection,
+    (snapshot) => {
+      const remoteUsers = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      const myId = getActiveProfileId();
+      const localDraft = state.users.find(
+        (user) => user.id === myId && !remoteUsers.some((remoteUser) => remoteUser.id === myId),
+      );
+      state.users = localDraft ? [...remoteUsers, localDraft] : remoteUsers;
+      persistLocalState();
+      hydrateProfileForm();
+      renderAll();
+      setStatus("一覧を同期しました。");
+    },
+    (error) => {
+      console.warn(error);
+      setStatus("一覧の同期に失敗しました。Firestore ルールを確認してください。");
+    },
+  );
 }
 
 async function saveProfile(event) {
@@ -141,6 +174,7 @@ async function saveProfile(event) {
   upsertLocalProfile(nextProfile);
   persistLocalState();
   renderAll();
+  await syncProfile(nextProfile);
   setStatus("プロフィールを保存しました。");
 }
 
@@ -201,6 +235,7 @@ async function addFaceToMyProfile(imageData) {
   renderProfileGallery();
   renderDirectory();
   renderSuggestion();
+  await syncProfile(existing);
   setStatus("顔写真を追加しました。");
 }
 
@@ -422,6 +457,10 @@ async function deleteMyProfile() {
   persistLocalState();
   hydrateProfileForm();
   renderAll();
+  await deleteDoc(doc(db, "profiles", profile.id)).catch((error) => {
+    console.warn(error);
+    setStatus("共有データの削除に失敗しました。Firestore ルールを確認してください。");
+  });
   setStatus("プロフィールを削除しました。");
 }
 
@@ -434,6 +473,13 @@ function toggleMenu() {
 function closeMenu() {
   els.sideMenu.hidden = true;
   els.menuButton.setAttribute("aria-expanded", "false");
+}
+
+async function syncProfile(profile) {
+  await setDoc(doc(db, "profiles", profile.id), profile, { merge: true }).catch((error) => {
+    console.warn(error);
+    setStatus("一覧の共有保存に失敗しました。Firestore ルールを確認してください。");
+  });
 }
 
 async function detectDescriptor(imageData) {

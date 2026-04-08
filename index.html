@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FreshFaces</title>
     <link rel="stylesheet" href="./styles.css" />
+    <script src="./config.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
     <script type="module" src="./app.js"></script>
   </head>
@@ -40,12 +41,12 @@
       <main id="app" class="content detection-layout">
         <section class="hero-panel">
           <div>
-            <p class="eyebrow">Local Mode</p>
-            <h2 id="welcomeName">ローカルモード</h2>
-            <p id="authStatus" class="muted">データはこのブラウザのみに保存されます。</p>
+            <p class="eyebrow">Shared List Mode</p>
+            <h2 id="welcomeName">共有モード</h2>
+            <p id="authStatus" class="muted">一覧は共有、覚えた状態はこのブラウザに保存されます。</p>
           </div>
           <div class="badge-row">
-            <span class="badge">localStorage</span>
+            <span class="badge">Firestore共有</span>
             <span class="badge">カメラ対応</span>
             <span class="badge">顔認識</span>
           </div>
