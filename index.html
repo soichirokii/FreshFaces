@@ -10,18 +10,37 @@
   </head>
   <body>
     <div class="app-shell">
-      <header class="hero">
+      <header class="topbar">
+        <button id="menuButton" class="icon-button" type="button" aria-expanded="false" aria-controls="sideMenu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
         <div>
-          <p class="eyebrow">Kamiyama Freshers App</p>
-          <h1>FreshFaces</h1>
-          <p class="hero-copy">新入生の顔と名前を覚えるための、シンプルなローカルアプリ。</p>
+          <p class="eyebrow">FreshFaces</p>
+          <h1>顔を見て、すぐ思い出す</h1>
         </div>
       </header>
 
-      <main id="app" class="content">
-        <section class="card welcome-card">
+      <aside id="sideMenu" class="side-menu" hidden>
+        <div class="side-menu-inner">
           <div>
-            <p class="section-label">Hello</p>
+            <p class="section-label">Menu</p>
+            <h2>メニュー</h2>
+          </div>
+          <nav class="menu-links">
+            <a href="#detectSection" data-close-menu>顔認識</a>
+            <a href="#profileSection" data-close-menu>自分の登録</a>
+            <a href="#todaySection" data-close-menu>今日の新入生</a>
+            <a href="#directorySection" data-close-menu>登録者一覧</a>
+          </nav>
+        </div>
+      </aside>
+
+      <main id="app" class="content detection-layout">
+        <section class="hero-panel">
+          <div>
+            <p class="eyebrow">Local Mode</p>
             <h2 id="welcomeName">ローカルモード</h2>
             <p id="authStatus" class="muted">データはこのブラウザのみに保存されます。</p>
           </div>
@@ -32,121 +51,84 @@
           </div>
         </section>
 
-        <section class="grid two">
-          <article class="card">
-            <div class="card-head">
-              <div>
-                <p class="section-label">Today</p>
-                <h3>今日の新入生</h3>
-              </div>
-              <button id="refreshSuggestionButton" class="ghost small">入れ替え</button>
-            </div>
-            <div id="suggestionCard" class="suggestion-card empty-state">
-              まだおすすめできるプロフィールがありません。
-            </div>
-          </article>
-
-          <article class="card">
-            <div class="card-head">
-              <div>
-                <p class="section-label">Lunch</p>
-                <h3>相席募集</h3>
-              </div>
-            </div>
-            <div class="empty-state">相席募集は一旦オフにしています。</div>
-          </article>
-        </section>
-
-        <section class="grid two">
-          <article class="card">
-            <div class="card-head">
-              <div>
-                <p class="section-label">Profile</p>
-                <h3>自分の登録</h3>
-              </div>
-            </div>
-            <form id="profileForm" class="stack">
-              <label>
-                名前
-                <input id="profileName" type="text" maxlength="40" required />
-              </label>
-              <label>
-                ふりがな
-                <input id="profileKana" type="text" maxlength="60" required />
-              </label>
-              <label>
-                あだ名
-                <input id="profileNickname" type="text" maxlength="40" required />
-              </label>
-              <label>
-                写真アップロード
-                <input id="photoUpload" type="file" accept="image/*" multiple />
-              </label>
-              <div class="inline-actions">
-                <button id="cameraStartButton" type="button" class="ghost">カメラ開始</button>
-                <button id="cameraCaptureButton" type="button" class="ghost">撮影して追加</button>
-                <button class="primary" type="submit">保存する</button>
-              </div>
-            </form>
-            <div class="camera-block">
-              <video id="cameraPreview" class="mirrored" autoplay muted playsinline></video>
-              <canvas id="captureCanvas" hidden></canvas>
-            </div>
-            <div id="profileGallery" class="photo-grid"></div>
-          </article>
-
-          <article class="card">
-            <div class="card-head">
-              <div>
-                <p class="section-label">Recognition</p>
-                <h3>顔認識</h3>
-              </div>
+        <section id="detectSection" class="card detection-card">
+          <div class="card-head">
+            <div>
+              <p class="section-label">Detect</p>
+              <h3>顔認識</h3>
             </div>
             <div class="inline-actions">
-              <button id="recognitionStartButton" type="button" class="ghost">認識カメラ開始</button>
+              <button id="recognitionStartButton" type="button" class="ghost">カメラ開始</button>
               <button id="recognizeButton" class="primary small" type="button">認識する</button>
             </div>
-            <p class="muted">
-              カメラに顔を映してボタンを押すと、上位3候補を表示します。
-            </p>
-            <div class="camera-block">
-              <video id="recognitionPreview" class="mirrored" autoplay muted playsinline></video>
-              <canvas id="recognitionCanvas" hidden></canvas>
-            </div>
-            <div id="recognitionResults" class="stack results empty-state">
-              まだ認識していません。
-            </div>
-          </article>
+          </div>
+          <p class="muted">まずはここから。カメラに顔を映して、認識ボタンを押します。</p>
+          <div class="camera-block">
+            <video id="recognitionPreview" class="mirrored" autoplay muted playsinline></video>
+            <canvas id="recognitionCanvas" hidden></canvas>
+          </div>
+          <div id="recognitionResults" class="stack results empty-state">まだ認識していません。</div>
         </section>
 
-        <section class="grid two">
-          <article class="card">
-            <div class="card-head">
-              <div>
-                <p class="section-label">Directory</p>
-                <h3>登録者一覧</h3>
-              </div>
-              <input id="directorySearch" type="search" placeholder="名前・ふりがな・あだ名で検索" />
+        <section id="profileSection" class="card">
+          <div class="card-head">
+            <div>
+              <p class="section-label">Profile</p>
+              <h3>自分の登録</h3>
             </div>
-            <div id="directoryList" class="directory-grid"></div>
-          </article>
+          </div>
+          <form id="profileForm" class="stack">
+            <label>
+              名前
+              <input id="profileName" type="text" maxlength="40" required />
+            </label>
+            <label>
+              ふりがな
+              <input id="profileKana" type="text" maxlength="60" required />
+            </label>
+            <label>
+              あだ名
+              <input id="profileNickname" type="text" maxlength="40" required />
+            </label>
+            <label>
+              写真アップロード
+              <input id="photoUpload" type="file" accept="image/*" multiple />
+            </label>
+            <div class="inline-actions">
+              <button id="cameraStartButton" type="button" class="ghost">登録カメラ開始</button>
+              <button id="cameraCaptureButton" type="button" class="ghost">撮影して追加</button>
+              <button class="primary" type="submit">保存する</button>
+            </div>
+          </form>
+          <div class="camera-block compact-camera">
+            <video id="cameraPreview" class="mirrored" autoplay muted playsinline></video>
+            <canvas id="captureCanvas" hidden></canvas>
+          </div>
+          <div id="profileGallery" class="photo-grid"></div>
+        </section>
 
-          <article class="card">
-            <div class="card-head">
-              <div>
-                <p class="section-label">Backup</p>
-                <h3>データ入出力</h3>
-              </div>
+        <section id="todaySection" class="card">
+          <div class="card-head">
+            <div>
+              <p class="section-label">Today</p>
+              <h3>今日の新入生</h3>
             </div>
-            <div class="stack">
-              <button id="exportButton" class="ghost">JSONを書き出す</button>
-              <label>
-                JSONを読み込む
-                <input id="importInput" type="file" accept="application/json" />
-              </label>
-              <button id="deleteProfileButton" class="danger">自分のプロフィールを削除</button>
+            <button id="refreshSuggestionButton" class="ghost small">入れ替え</button>
+          </div>
+          <div id="suggestionCard" class="suggestion-card empty-state">
+            まだおすすめできるプロフィールがありません。
+          </div>
+        </section>
+
+        <section id="directorySection" class="card">
+          <div class="card-head">
+            <div>
+              <p class="section-label">Directory</p>
+              <h3>登録者一覧</h3>
             </div>
-          </article>
+            <input id="directorySearch" type="search" placeholder="名前・ふりがな・あだ名で検索" />
+          </div>
+          <div id="directoryList" class="directory-grid"></div>
         </section>
       </main>
     </div>

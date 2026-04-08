@@ -19,8 +19,7 @@ const els = {
   deleteProfileButton: document.querySelector("#deleteProfileButton"),
   directoryList: document.querySelector("#directoryList"),
   directorySearch: document.querySelector("#directorySearch"),
-  exportButton: document.querySelector("#exportButton"),
-  importInput: document.querySelector("#importInput"),
+  menuButton: document.querySelector("#menuButton"),
   photoUpload: document.querySelector("#photoUpload"),
   profileForm: document.querySelector("#profileForm"),
   profileGallery: document.querySelector("#profileGallery"),
@@ -33,6 +32,7 @@ const els = {
   recognitionStartButton: document.querySelector("#recognitionStartButton"),
   recognizeButton: document.querySelector("#recognizeButton"),
   refreshSuggestionButton: document.querySelector("#refreshSuggestionButton"),
+  sideMenu: document.querySelector("#sideMenu"),
   suggestionCard: document.querySelector("#suggestionCard"),
   welcomeName: document.querySelector("#welcomeName"),
 };
@@ -54,14 +54,16 @@ function bindEvents() {
   els.photoUpload.addEventListener("change", handlePhotoUpload);
   els.profileForm.addEventListener("submit", saveProfile);
   els.recognizeButton.addEventListener("click", recognizeFace);
+  els.menuButton.addEventListener("click", toggleMenu);
   els.refreshSuggestionButton.addEventListener("click", () => {
     state.suggestionId = null;
     renderSuggestion();
   });
   els.directorySearch.addEventListener("input", renderDirectory);
-  els.exportButton.addEventListener("click", exportJson);
-  els.importInput.addEventListener("change", importJson);
   els.deleteProfileButton.addEventListener("click", deleteMyProfile);
+  document.querySelectorAll("[data-close-menu]").forEach((link) =>
+    link.addEventListener("click", () => closeMenu()),
+  );
 }
 
 function setStatus(message) {
@@ -412,38 +414,6 @@ function markMemorized(id) {
   renderSuggestion();
 }
 
-function exportJson() {
-  const blob = new Blob([JSON.stringify({ users: state.users, memorizedIds: state.memorizedIds }, null, 2)], {
-    type: "application/json",
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "freshfaces-backup.json";
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-async function importJson(event) {
-  const file = event.target.files?.[0];
-  if (!file) return;
-  try {
-    const parsed = JSON.parse(await file.text());
-    if (!Array.isArray(parsed.users)) throw new Error("users 配列が必要です");
-    if (!window.confirm("既存データを上書きしますか？")) return;
-    state.users = parsed.users;
-    state.memorizedIds = Array.isArray(parsed.memorizedIds) ? parsed.memorizedIds : [];
-    persistLocalState();
-    hydrateProfileForm();
-    renderAll();
-    setStatus("JSONを読み込みました。");
-  } catch (error) {
-    setStatus(`インポートに失敗しました: ${error.message}`);
-  } finally {
-    event.target.value = "";
-  }
-}
-
 async function deleteMyProfile() {
   const profile = getMyProfile();
   if (!profile) return;
@@ -453,6 +423,17 @@ async function deleteMyProfile() {
   hydrateProfileForm();
   renderAll();
   setStatus("プロフィールを削除しました。");
+}
+
+function toggleMenu() {
+  const nextHidden = !els.sideMenu.hidden;
+  els.sideMenu.hidden = nextHidden;
+  els.menuButton.setAttribute("aria-expanded", String(!nextHidden));
+}
+
+function closeMenu() {
+  els.sideMenu.hidden = true;
+  els.menuButton.setAttribute("aria-expanded", "false");
 }
 
 async function detectDescriptor(imageData) {
@@ -480,12 +461,6 @@ function captureVideoFrame(video, canvas) {
   const context = canvas.getContext("2d");
   context.drawImage(video, 0, 0, width, height);
   return canvas.toDataURL("image/jpeg", 0.92);
-}
-
-function createExpiryIso(dateText, slot) {
-  const date = new Date(`${dateText}T00:00:00`);
-  date.setHours(slot === "lunch" ? 14 : 21, 0, 0, 0);
-  return date.toISOString();
 }
 
 function calculateDistance(a, b) {
